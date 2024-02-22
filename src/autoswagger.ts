@@ -83,6 +83,10 @@ function formatOperationId(inputString: string): string {
   return camelCase(operationId);
 }
 
+function pascalCaseToSnakeCase(inputString: string): string {
+  return snakeCase(camelCase(inputString));
+}
+
 /**
  * Check if a string is a valid JSON
  */
@@ -337,9 +341,26 @@ export class AutoSwagger {
         } else {
           v6handler = await serializeV6Handler(v6handler);
           action = v6handler.method;
-          sourceFile = v6handler.moduleNameOrPath;
-          sourceFile = sourceFile.replace("#", "");
-          sourceFile = options.path + "app/" + sourceFile;
+
+          let searchedSourceFile =
+            options.path + "app/" + v6handler.moduleNameOrPath.replace("#", "");
+
+          if (!fs.existsSync(searchedSourceFile + ".ts")) {
+            // Try a snake_case version of the file
+            searchedSourceFile =
+              options.path +
+              "app/controllers/" +
+              pascalCaseToSnakeCase(
+                v6handler.moduleNameOrPath.replace("#", "")
+              );
+
+            if (fs.existsSync(searchedSourceFile + ".ts")) {
+              sourceFile = searchedSourceFile;
+            }
+          } else {
+            sourceFile = searchedSourceFile;
+          }
+
           if (sourceFile !== "" && action !== "") {
             customAnnotations = await this.getCustomAnnotations(
               sourceFile,
